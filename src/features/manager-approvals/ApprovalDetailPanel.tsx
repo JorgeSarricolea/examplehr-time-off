@@ -14,7 +14,6 @@ import { useBalanceCell, usePatchRequestMutation } from '@/features/balances/hoo
 import { BALANCE_TYPE_LABELS } from '@/shared/lib/balance-labels';
 import { getLocationMeta } from '@/shared/lib/locations';
 import { formatFreshness } from '@/shared/lib/reconcile';
-import { hasInsufficientBalance } from '@/shared/lib/request-status';
 import { StatusChip } from '@/shared/ui/StatusChip';
 import { useSnackbar } from '@/providers/SnackbarProvider';
 import type { TimeOffRequest } from '@/shared/types/hcm';
@@ -60,8 +59,6 @@ export function ApprovalDetailPanel({
   const location = getLocationMeta(request.locationId, request.locationName);
   const balanceLabel = BALANCE_TYPE_LABELS[request.balanceType];
   const isPending = request.status === 'manager_pending';
-  const effectiveDays = liveDays ?? snapshotDays;
-  const insufficientBalance = !readOnly && hasInsufficientBalance(effectiveDays, request.daysRequested);
 
   const approve = async (skipGate = false) => {
     setError(null);
@@ -69,12 +66,6 @@ export function ApprovalDetailPanel({
       const fresh = await cellQuery.refetch();
       const days = fresh.data?.availableDays ?? snapshotDays;
       const baseline = snapshotRef.current ?? snapshotDays;
-      if (hasInsufficientBalance(days, request.daysRequested)) {
-        setError(
-          `Not enough days available (${days} remaining, ${request.daysRequested} requested).`,
-        );
-        return;
-      }
       if (days !== baseline) {
         setCurrentDays(days);
         setGateOpen(true);
@@ -149,6 +140,9 @@ export function ApprovalDetailPanel({
               <Typography variant="body2">
                 Available when you opened: <strong>{snapshotDays}</strong> days
               </Typography>
+              <Typography variant="caption" color="text.secondary" display="block">
+                Days for this request were reserved when the employee submitted.
+              </Typography>
               {cellQuery.data && (
                 <Typography variant="body2" color="text.secondary">
                   Current from payroll: <strong>{liveDays}</strong> days · updated{' '}
@@ -160,16 +154,9 @@ export function ApprovalDetailPanel({
         </Stack>
       </Box>
 
-      {balanceChanged && liveDays !== undefined && !insufficientBalance && (
+      {balanceChanged && liveDays !== undefined && (
         <Alert severity="warning" variant="outlined">
           Balance changed since you opened this (was {snapshotRef.current}, now {liveDays}).
-        </Alert>
-      )}
-
-      {insufficientBalance && (
-        <Alert severity="error" variant="outlined">
-          Cannot approve — payroll shows <strong>{effectiveDays}</strong> day(s) available but{' '}
-          {request.daysRequested} requested.
         </Alert>
       )}
 
@@ -179,7 +166,7 @@ export function ApprovalDetailPanel({
         <Stack direction="row" spacing={1}>
           <Button
             variant="contained"
-            disabled={patchMutation.isPending || insufficientBalance}
+            disabled={patchMutation.isPending}
             onClick={() => approve()}
           >
             {patchMutation.isPending ? 'Verifying…' : 'Approve'}
@@ -207,12 +194,6 @@ export function ApprovalDetailPanel({
         }}
         onApproveAnyway={async () => {
           setGateOpen(false);
-          if (hasInsufficientBalance(currentDays, request.daysRequested)) {
-            setError(
-              `Not enough days available (${currentDays} remaining, ${request.daysRequested} requested).`,
-            );
-            return;
-          }
           try {
             await patchMutation.mutateAsync({
               requestId: request.id,

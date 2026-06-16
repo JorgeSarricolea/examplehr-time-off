@@ -241,16 +241,6 @@ export async function handlePatchTimeOffRequest(
       };
     }
 
-    if (cell.availableDays < request.daysRequested) {
-      return {
-        status: 409,
-        data: {
-          code: 'INSUFFICIENT_BALANCE',
-          message: `Only ${cell.availableDays} days available for this request`,
-        },
-      };
-    }
-
     if (
       body.balanceSnapshotDays !== undefined &&
       body.balanceSnapshotDays !== cell.availableDays

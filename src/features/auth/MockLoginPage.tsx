@@ -16,8 +16,9 @@ import {
   ListItemText,
 } from '@mui/material';
 import { DEMO_USERS } from '@/hcm-mock/store';
-import { authApi } from '@/shared/lib/api';
+import { authApi, hcmApi } from '@/shared/lib/api';
 import { useSessionStore } from '@/features/auth/session-store';
+import { useSnackbar } from '@/providers/SnackbarProvider';
 
 const roleLabels = {
   employee: 'Employee',
@@ -27,7 +28,9 @@ const roleLabels = {
 export function MockLoginPage() {
   const router = useRouter();
   const setUser = useSessionStore((s) => s.setUser);
+  const { notify } = useSnackbar();
   const [loading, setLoading] = useState<string | null>(null);
+  const [resetting, setResetting] = useState(false);
 
   const handleLogin = async (email: string) => {
     setLoading(email);
@@ -37,6 +40,19 @@ export function MockLoginPage() {
       router.push(user.role === 'manager' ? '/manager/approvals' : '/employee/balances');
     } finally {
       setLoading(null);
+    }
+  };
+
+  const handleResetDemo = async () => {
+    setResetting(true);
+    try {
+      const result = await hcmApi.resetDemo();
+      notify(result.message, { severity: 'info' });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Reset failed';
+      notify(message, { severity: 'error' });
+    } finally {
+      setResetting(false);
     }
   };
 
@@ -90,6 +106,18 @@ export function MockLoginPage() {
             <Button variant="text" size="small" href="/">
               Back to home
             </Button>
+            <Button
+              variant="outlined"
+              size="small"
+              color="inherit"
+              disabled={resetting}
+              onClick={handleResetDemo}
+            >
+              {resetting ? 'Resetting…' : 'Reset demo data'}
+            </Button>
+            <Typography variant="caption" color="text.secondary" textAlign="center">
+              Clears shared mock requests and restores demo balances (live deploy only).
+            </Typography>
           </Stack>
         </CardContent>
       </Card>

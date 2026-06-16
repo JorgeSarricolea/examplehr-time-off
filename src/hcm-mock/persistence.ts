@@ -5,7 +5,7 @@ import {
   snapshotHcmState,
   type PersistedHcmBlob,
 } from './persisted-blob';
-import { getHcmState } from './store';
+import { getHcmState, resetHcmState } from './store';
 
 const PERSISTENCE_TTL_SECONDS = 60 * 60 * 24 * 7;
 
@@ -28,22 +28,16 @@ function createRedisClient(): Redis {
   });
 }
 
-let hydrationPromise: Promise<void> | null = null;
-
 export async function hydrateHcmState(): Promise<void> {
   if (!isKvPersistenceEnabled()) return;
 
-  if (!hydrationPromise) {
-    hydrationPromise = (async () => {
-      const redis = createRedisClient();
-      const blob = await redis.get<PersistedHcmBlob>(HCM_MOCK_PERSISTENCE_KEY);
-      if (blob) {
-        applyPersistedBlob(getHcmState(), blob);
-      }
-    })();
-  }
+  const redis = createRedisClient();
+  const blob = await redis.get<PersistedHcmBlob>(HCM_MOCK_PERSISTENCE_KEY);
 
-  await hydrationPromise;
+  resetHcmState();
+  if (blob) {
+    applyPersistedBlob(getHcmState(), blob);
+  }
 }
 
 export async function persistHcmState(): Promise<void> {
@@ -54,6 +48,9 @@ export async function persistHcmState(): Promise<void> {
   await redis.set(HCM_MOCK_PERSISTENCE_KEY, blob, { ex: PERSISTENCE_TTL_SECONDS });
 }
 
-export function resetHydrationCache(): void {
-  hydrationPromise = null;
+export async function clearPersistedHcmState(): Promise<void> {
+  if (!isKvPersistenceEnabled()) return;
+
+  const redis = createRedisClient();
+  await redis.del(HCM_MOCK_PERSISTENCE_KEY);
 }

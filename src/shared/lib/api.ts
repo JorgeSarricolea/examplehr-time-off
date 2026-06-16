@@ -72,6 +72,11 @@ export const hcmApi = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     }),
+
+  resetDemo: () =>
+    fetchJson<{ applied: boolean; message: string }>(`${API_BASE}/dev/reset`, {
+      method: 'POST',
+    }),
 };
 
 export const authApi = {

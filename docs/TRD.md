@@ -102,7 +102,7 @@ Next route handlers run on **stateless Lambdas**. Without shared storage, each `
 
 **Demo-only persistence (not production architecture):** When `HCM_MOCK_STORE=kv`, Next routes hydrate/persist a single JSON blob (`balances`, `requests`, `requestCounter`) via `@upstash/redis` (Vercel Redis / Upstash integration). Local tests and Storybook stay on in-memory — no Redis required for `pnpm test` / `pnpm storybook`. A real product would replace this adapter with payroll/HCM APIs and a durable backend; the UI contract is unchanged.
 
-**Vercel setup (maintainer):** Marketplace → add **Redis** (Upstash) to the project → set `HCM_MOCK_STORE=kv` → redeploy. Blob TTL is 7 days (shared public demo resets automatically).
+**Vercel setup (maintainer):** Marketplace → add **Redis** (Upstash) to the project → set `HCM_MOCK_STORE=kv` → redeploy. Blob TTL is 7 days (shared public demo resets automatically). Use **Reset demo data** on the login screen or `POST /api/hcm/dev/reset` to clear polluted shared state.
 
 #### Brief behaviors → implementation
 
@@ -272,7 +272,7 @@ When batch data and optimistic deductions overlap on the same cell `(employeeId,
 1. **Batch arrives during optimistic pending:** Apply batch via `reconcileBalances(optimistic, server)` — rules above; pending request row stays until HCM resolves.
 2. **Anniversary bonus mid-session:** Batch or chaos trigger increments cell; UI shows `BalanceRefreshBanner` with diff; employee form re-validates against new balance.
 3. **Silent wrong (200, wrong data):** **Chaos-harness scenario** (`silent_wrong_next`), not typical production HCM behavior. Client surfaces mismatch via `hasSilentWrongConflict` → `conflict_recovery` UI (E05).
-4. **Manager freshness gate:** On approve click, `refetch` cell; if `availableDays !== balanceSnapshotDays`, show `FreshnessGateModal`. Primary CTA = refresh and retry with new snapshot. Secondary **Approve anyway** = explicit manager override after acknowledging the diff (warning snackbar in UI). Payroll remains authoritative; in production this path would require audit logging — omitted in mock v1.
+4. **Manager freshness gate:** On approve click, `refetch` cell; if `availableDays !== balanceSnapshotDays`, show `FreshnessGateModal`. Primary CTA = refresh and retry with new snapshot. Secondary **Approve anyway** = explicit manager override after acknowledging the diff (warning snackbar in UI). Payroll remains authoritative; in production this path would require audit logging — omitted in mock v1. **Days are reserved at employee submit** — manager approve does not re-check `availableDays >= daysRequested` (post-deduction balance is expected to be lower).
 
 ### Reconcile sequence (submit + background batch)
 

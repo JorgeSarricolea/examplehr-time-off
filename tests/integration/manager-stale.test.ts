@@ -3,7 +3,7 @@ import {
   handleCreateTimeOffRequest,
   handlePatchTimeOffRequest,
 } from '@/hcm-mock/handlers';
-import { applyAnniversaryBonus, resetHcmState } from '@/hcm-mock/store';
+import { applyAnniversaryBonus, getBalanceCell, resetHcmState } from '@/hcm-mock/store';
 
 describe('manager stale approve', () => {
   beforeEach(() => resetHcmState());
@@ -32,7 +32,7 @@ describe('manager stale approve', () => {
     expect(patch.status).toBe(409);
   });
 
-  it('blocks approve when balance is below days requested', async () => {
+  it('allows approve when days were reserved at employee submit', async () => {
     const created = await handleCreateTimeOffRequest({
       employeeId: 'emp-sam',
       locationId: 'loc-nyc',
@@ -44,15 +44,17 @@ describe('manager stale approve', () => {
     expect(created.status).toBe(201);
     if ('code' in created.data) return;
 
+    const cell = getBalanceCell('emp-sam', 'loc-nyc', 'vacation');
+    expect(cell?.availableDays).toBe(0);
+
     const patch = await handlePatchTimeOffRequest(created.data.id, {
       action: 'approve',
       managerId: 'mgr-morgan',
       balanceSnapshotDays: 0,
     });
 
-    expect(patch.status).toBe(409);
-    if ('code' in patch.data) {
-      expect(patch.data.code).toBe('INSUFFICIENT_BALANCE');
-    }
+    expect(patch.status).toBe(200);
+    if ('code' in patch.data) return;
+    expect(patch.data.status).toBe('approved');
   });
 });
