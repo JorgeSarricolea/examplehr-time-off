@@ -68,12 +68,6 @@ export function HomePage() {
         <Button component={Link} href="/login" variant="contained" size="large">
           Try the demo
         </Button>
-        <Button component={Link} href="/employee/balances" variant="outlined" size="large">
-          Employee view
-        </Button>
-        <Button component={Link} href="/manager/approvals" variant="outlined" size="large">
-          Manager view
-        </Button>
       </Stack>
       {showDevTools && <ChaosPanel />}
     </Stack>
