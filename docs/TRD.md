@@ -461,9 +461,9 @@ No coverage badge or % gate in CI. If a regression slips through, add a guard at
 
 ## 13. Deployment
 
-- **App:** Vercel, Next.js production build
-- **Storybook:** `pnpm build-storybook` → static deploy (separate Vercel project or subpath)
-- **Repo:** Public GitHub with README one-command setup
+- **App:** https://examplehrtimeoffnative.vercel.app — Vercel + Next.js (`vercel.json`)
+- **Storybook:** https://examplehr-time-off-storybook.vercel.app — static (`pnpm build-storybook` → deploy `storybook-static/`)
+- **Repo:** https://github.com/JorgeSarricolea/examplehr-time-off
 
 ---
 
@@ -483,10 +483,11 @@ No coverage badge or % gate in CI. If a regression slips through, add a guard at
 |-------------|-----------------|--------|----------------|
 | TRD | Eng Spec with reasoning on optimistic/pessimistic, cache, reconciliation, component tree | Done | `docs/TRD.md` |
 | OpenAPI spec | — (extension) | Done | `openapi/hcm.yaml` |
-| GitHub repo | Public repo, one-command setup | Pending | `git push -u origin main` |
+| GitHub repo | Public repo, one-command setup | Done | https://github.com/JorgeSarricolea/examplehr-time-off |
 | Vitest suite | Integration + unit tests — 38 passing | Done | `pnpm test` |
 | Edge case coverage | E01–E14 mapped to tests + stories | Done | §10 above |
 | Storybook (local) | Every meaningful UI state, single command | Done | `pnpm storybook` |
-| Storybook (deployed) | Deployed or trivially runnable | Pending | `pnpm build-storybook` → Vercel |
+| Storybook (deployed) | Deployed or trivially runnable | Done | https://examplehr-time-off-storybook.vercel.app |
 | Playwright E2E | Smoke + full demo flow (login → submit → approve) | Done | `pnpm test:e2e` — `tests/e2e/demo-flow.spec.ts` |
 | Demo script | 60-second reviewer walkthrough | Done | `docs/demo-script.md` |
+| App (deployed) | Runnable without clone | Done | https://examplehrtimeoffnative.vercel.app |

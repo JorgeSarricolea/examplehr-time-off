@@ -2,6 +2,10 @@
 
 Payroll (HCM) owns the numbers; this UI stays fast and honest when payroll is slow, wrong, or changes mid-session.
 
+**Repo:** https://github.com/JorgeSarricolea/examplehr-time-off  
+**Live app:** https://examplehrtimeoffnative.vercel.app  
+**Storybook:** https://examplehr-time-off-storybook.vercel.app
+
 ## Quick start
 
 ```bash
@@ -18,8 +22,7 @@ Mock login: `alex@example.com` (employee), `morgan@example.com` (manager) — fu
 
 | Goal | Start here |
 |------|------------|
-| See it work (60s) | [docs/demo-script.md](docs/demo-script.md) |
+| See it work (60s) | [docs/demo-script.md](docs/demo-script.md) → live [app](https://examplehrtimeoffnative.vercel.app) |
 | Engineering spec + E01–E14 proof | [docs/TRD.md](docs/TRD.md) |
 | HCM API contract | [openapi/hcm.yaml](openapi/hcm.yaml) |
-
-Deploy: [`vercel.json`](vercel.json) (app) · [`vercel.storybook.json`](vercel.storybook.json) (Storybook) — details in [TRD §13](docs/TRD.md#13-deployment).
+| UI state matrix | [Storybook](https://examplehr-time-off-storybook.vercel.app) |
