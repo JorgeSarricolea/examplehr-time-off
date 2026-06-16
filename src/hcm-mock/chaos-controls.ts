@@ -70,5 +70,6 @@ export function shouldSilentWrong(): boolean {
     return true;
   }
   if (process.env.VITEST) return false;
+  if (process.env.NODE_ENV === 'production') return false;
   return Math.random() < 0.05;
 }

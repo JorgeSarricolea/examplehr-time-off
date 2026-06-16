@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { handleGetBalanceCell } from '@/hcm-mock/handlers';
+import { withHcmPersistence } from '@/hcm-mock/with-hcm-persistence';
 import type { BalanceType } from '@/shared/types/hcm';
 
 export async function GET(
@@ -13,7 +14,9 @@ export async function GET(
     ? Number(searchParams.get('delay'))
     : undefined;
 
-  const result = await handleGetBalanceCell(employeeId, locationId, balanceType, delayMs);
+  const result = await withHcmPersistence(() =>
+    handleGetBalanceCell(employeeId, locationId, balanceType, delayMs),
+  );
 
   if ('code' in result) {
     const status = result.code === 'NOT_FOUND' ? 404 : 504;

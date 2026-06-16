@@ -1,12 +1,15 @@
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react';
-import { expect, within } from '@storybook/test';
+import { expect, userEvent, within } from '@storybook/test';
+import { Stack, Typography } from '@mui/material';
 import { ConflictCard } from '@/features/time-off-requests/ConflictCard';
 import { RequestForm } from '@/features/time-off-requests/RequestForm';
 import { RequestRow } from '@/features/time-off-requests/RequestRow';
 import { StaleConfirmationCard } from '@/features/time-off-requests/StaleConfirmationCard';
 import { StatusLegend } from '@/shared/ui/StatusLegend';
-import type { BalanceCell, TimeOffRequest } from '@/shared/types/hcm';
+import type { BalanceCell, RequestStatus, TimeOffRequest } from '@/shared/types/hcm';
+import { displayRequestStatus } from '@/shared/lib/request-status';
+import { STATUS_CHIP_CONFIG } from '@/shared/ui/status-chip-config';
 
 const alexBalances: BalanceCell[] = [
   {
@@ -63,6 +66,49 @@ export default meta;
 export const StatusLegendStory: StoryObj = {
   name: 'Status legend',
   render: () => <StatusLegend />,
+};
+
+export const StatusLegendFilter: StoryObj = {
+  name: 'Status legend — filter toggle',
+  render: function StatusLegendFilterStory() {
+    const sampleRequests: TimeOffRequest[] = [
+      { ...baseRequest, id: 'req-1', status: 'manager_pending' },
+      { ...baseRequest, id: 'req-2', status: 'denied' },
+      { ...baseRequest, id: 'req-3', status: 'approved' },
+    ];
+    const [selected, setSelected] = useState<RequestStatus | null>(null);
+
+    const visible = useMemo(() => {
+      if (!selected) return sampleRequests;
+      return sampleRequests.filter((r) => displayRequestStatus(r) === selected);
+    }, [selected]);
+
+    return (
+      <Stack spacing={2} sx={{ maxWidth: 560 }}>
+        <StatusLegend selected={selected} onChange={setSelected} />
+        <Stack spacing={0.5}>
+          {visible.map((request) => (
+            <Typography key={request.id} variant="body2">
+              {request.id} · {STATUS_CHIP_CONFIG[displayRequestStatus(request)].label}
+            </Typography>
+          ))}
+        </Stack>
+      </Stack>
+    );
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const deniedChip = canvas.getByRole('button', { name: 'Denied' });
+
+    await userEvent.click(deniedChip);
+    await expect(deniedChip).toHaveAttribute('aria-pressed', 'true');
+    await expect(canvas.getByText('req-2 · Denied')).toBeInTheDocument();
+    await expect(canvas.queryByText('req-1 · Awaiting manager')).not.toBeInTheDocument();
+
+    await userEvent.click(deniedChip);
+    await expect(deniedChip).toHaveAttribute('aria-pressed', 'false');
+    await expect(canvas.getByText('req-1 · Awaiting manager')).toBeInTheDocument();
+  },
 };
 
 export const OptimisticPending: StoryObj = {

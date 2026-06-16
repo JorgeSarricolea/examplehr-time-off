@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import AddIcon from '@mui/icons-material/Add';
 import CloseIcon from '@mui/icons-material/Close';
@@ -25,6 +25,8 @@ import { RequestForm } from '@/features/time-off-requests/RequestForm';
 import { RequestRow } from '@/features/time-off-requests/RequestRow';
 import { StatusLegend } from '@/shared/ui/StatusLegend';
 import { useSessionStore } from '@/features/auth/session-store';
+import { displayRequestStatus } from '@/shared/lib/request-status';
+import type { RequestStatus } from '@/shared/types/hcm';
 
 interface EmployeeRequestsHubProps {
   initialFormOpen?: boolean;
@@ -41,13 +43,22 @@ export function EmployeeRequestsHub({
   const userId = useSessionStore((s) => s.user?.userId ?? '');
   const balancesQuery = useBalancesBatch(userId);
   const requestsQuery = useEmployeeRequests(userId);
-  const requests = requestsQuery.data?.items ?? [];
+  const requests = useMemo(
+    () => requestsQuery.data?.items ?? [],
+    [requestsQuery.data?.items],
+  );
   const hasConfirming = requests.some((r) => r.status === 'hcm_confirming');
 
   const [formOpen, setFormOpen] = useState(initialFormOpen);
   const [conflict, setConflict] = useState<string | null>(null);
   const [conflictDays, setConflictDays] = useState(0);
   const [highlightId, setHighlightId] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<RequestStatus | null>(null);
+
+  const filteredRequests = useMemo(() => {
+    if (!statusFilter) return requests;
+    return requests.filter((request) => displayRequestStatus(request) === statusFilter);
+  }, [requests, statusFilter]);
 
   const openForm = useCallback(() => {
     setFormOpen(true);
@@ -139,7 +150,7 @@ export function EmployeeRequestsHub({
         </Button>
       </Stack>
 
-      <StatusLegend />
+      <StatusLegend selected={statusFilter} onChange={setStatusFilter} />
 
       {requests.length === 0 ? (
         <Card variant="outlined" sx={{ borderStyle: 'dashed', bgcolor: 'background.paper' }}>
@@ -164,9 +175,17 @@ export function EmployeeRequestsHub({
             </Stack>
           </CardContent>
         </Card>
+      ) : filteredRequests.length === 0 ? (
+        <Card variant="outlined" sx={{ bgcolor: 'background.paper' }}>
+          <CardContent>
+            <Typography variant="body2" color="text.secondary" textAlign="center" sx={{ py: 3 }}>
+              No requests match this status. Click the filter again to show all.
+            </Typography>
+          </CardContent>
+        </Card>
       ) : (
         <Stack spacing={1.5} divider={<Divider flexItem />}>
-          {requests.map((req) => (
+          {filteredRequests.map((req) => (
             <RequestRow
               key={req.id}
               request={req}

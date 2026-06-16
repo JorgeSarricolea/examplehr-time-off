@@ -91,6 +91,19 @@ The brief requires mock HCM endpoints **as part of the test harness**, with enou
 
 In-memory state lives in `hcm-mock/store.ts` (balances, requests, chaos flags). OpenAPI documents the surface: [`openapi/hcm.yaml`](../openapi/hcm.yaml).
 
+#### Deployed demo (Vercel serverless)
+
+Next route handlers run on **stateless Lambdas**. Without shared storage, each `/api/hcm/*` call may see a different in-memory `Map` — symptoms include a single request row that appears to “update” instead of stack, and **withdraw 404** (`Request not found`) when DELETE hits an instance that never stored that `req-*` id.
+
+| Environment | Mock store | Chaos / silent-wrong |
+|-------------|------------|----------------------|
+| `pnpm dev`, Vitest, MSW | In-process memory (default) | Full matrix (5% random + `/dev/chaos`) |
+| Vercel production | **Optional Redis** when `HCM_MOCK_STORE=kv` + Upstash env vars | Random silent-wrong **off**; `/dev/chaos` returns **403** |
+
+**Demo-only persistence (not production architecture):** When `HCM_MOCK_STORE=kv`, Next routes hydrate/persist a single JSON blob (`balances`, `requests`, `requestCounter`) via `@upstash/redis` (Vercel Redis / Upstash integration). Local tests and Storybook stay on in-memory — no Redis required for `pnpm test` / `pnpm storybook`. A real product would replace this adapter with payroll/HCM APIs and a durable backend; the UI contract is unchanged.
+
+**Vercel setup (maintainer):** Marketplace → add **Redis** (Upstash) to the project → set `HCM_MOCK_STORE=kv` → redeploy. Blob TTL is 7 days (shared public demo resets automatically).
+
 #### Brief behaviors → implementation
 
 | Brief requirement | Mock behavior | Primary exercise |
@@ -98,7 +111,7 @@ In-memory state lives in `hcm-mock/store.ts` (balances, requests, chaos flags). 
 | Balance changes | Deduct on confirmed submit; manager approve/deny/withdraw update request + balance | `submit-reject.test.ts`, `demo-flow.spec.ts` (E2E), `Balances/*` stories |
 | Anniversary bonus mid-session | `applyAnniversaryBonus()` via `POST /dev/chaos` `{ action: "anniversary_bonus" }` | `anniversary.test.ts` (E01), home **HCM Simulator** (dev), `Balances/MidSessionRefresh` |
 | Year-start refresh | `applyYearStartRefresh()` via chaos `year_start_refresh` | Chaos panel; extends harness beyond PDF minimum |
-| Silent wrong (200, wrong data) | ~5% random on POST (`shouldSilentWrong`, disabled under `VITEST`); deterministic via `silent_wrong_next` chaos | `silent-wrong.test.ts` (E05), `Employee/Atoms/Silently wrong` |
+| Silent wrong (200, wrong data) | ~5% random on POST in **non-production** (`shouldSilentWrong`, disabled under `VITEST`); deterministic via `silent_wrong_next` chaos | `silent-wrong.test.ts` (E05), `Employee/Atoms/Silently wrong` |
 | Insufficient balance rejection | 409 `INSUFFICIENT_BALANCE` when `daysRequested > availableDays` | `submit-reject.test.ts` (E03), `Employee/Atoms/HCM rejected` |
 | Invalid dimension | 400 `INVALID_DIMENSION` for bad employee/location/type | `invalid-dimension.test.ts` (E04) |
 | Slow / timeout HCM | `delay` query param; `slow_network` chaos; 504 above threshold | `slow-hcm.test.ts`, `timeout.test.ts` (E07–E08) |
@@ -451,7 +464,7 @@ No coverage badge or % gate in CI. If a regression slips through, add a guard at
 ## 12. Non-Goals
 
 - Real authentication / SSO
-- Persistent database (in-memory mock only)
+- Persistent database for the **product** (mock uses in-memory locally; optional Redis blob on Vercel for demo continuity only — see [§3.1](#deployed-demo-vercel-serverless))
 - i18n
 - Push notifications
 - GraphQL / SSE

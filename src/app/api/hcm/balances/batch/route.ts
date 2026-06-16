@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { handleGetBalancesBatch } from '@/hcm-mock/handlers';
+import { withHcmPersistence } from '@/hcm-mock/with-hcm-persistence';
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -7,7 +8,9 @@ export async function GET(request: Request) {
   const delay = searchParams.get('delay');
   const delayMs = delay ? Number(delay) : undefined;
 
-  const result = await handleGetBalancesBatch(employeeId, delayMs);
+  const result = await withHcmPersistence(() =>
+    handleGetBalancesBatch(employeeId, delayMs),
+  );
 
   if ('code' in result) {
     const statusMap = { RATE_LIMITED: 429, GATEWAY_TIMEOUT: 504 } as const;

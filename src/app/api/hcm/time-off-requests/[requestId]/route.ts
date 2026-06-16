@@ -3,6 +3,7 @@ import {
   handlePatchTimeOffRequest,
   handleWithdrawTimeOffRequest,
 } from '@/hcm-mock/handlers';
+import { withHcmPersistence } from '@/hcm-mock/with-hcm-persistence';
 import { patchTimeOffRequestSchema } from '@/shared/lib/schemas';
 
 export async function PATCH(
@@ -25,7 +26,9 @@ export async function PATCH(
     );
   }
 
-  const result = await handlePatchTimeOffRequest(requestId, parsed.data, delayMs);
+  const result = await withHcmPersistence(() =>
+    handlePatchTimeOffRequest(requestId, parsed.data, delayMs),
+  );
   return NextResponse.json(result.data, { status: result.status });
 }
 
@@ -34,7 +37,7 @@ export async function DELETE(
   { params }: { params: Promise<{ requestId: string }> },
 ) {
   const { requestId } = await params;
-  const result = await handleWithdrawTimeOffRequest(requestId);
+  const result = await withHcmPersistence(() => handleWithdrawTimeOffRequest(requestId));
 
   if (result.data) {
     return NextResponse.json(result.data, { status: result.status });

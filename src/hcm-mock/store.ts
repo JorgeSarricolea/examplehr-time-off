@@ -78,6 +78,7 @@ export function createInitialBalances(): BalanceCell[] {
 export interface HcmMockState {
   balances: Map<string, BalanceCell>;
   requests: Map<string, TimeOffRequest>;
+  requestCounter: number;
   silentWrongNext: boolean;
   slowConfirmNext: boolean;
   defaultDelayMs: number;
@@ -94,6 +95,7 @@ export function createHcmMockState(): HcmMockState {
   return {
     balances,
     requests: new Map(),
+    requestCounter: 0,
     silentWrongNext: false,
     slowConfirmNext: false,
     defaultDelayMs: 0,
@@ -183,11 +185,9 @@ export function applyYearStartRefresh(): BalanceCell[] {
   return affected;
 }
 
-let requestCounter = 0;
-
 export function generateRequestId(): string {
-  requestCounter += 1;
-  return `req-${requestCounter}`;
+  globalState.requestCounter += 1;
+  return `req-${globalState.requestCounter}`;
 }
 
 export async function applyDelay(ms?: number): Promise<void> {
