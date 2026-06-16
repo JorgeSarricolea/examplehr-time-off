@@ -1,0 +1,491 @@
+openapi: 3.0.3
+info:
+  title: ExampleHR Mock HCM API
+  version: 1.0.0
+  description: |
+    Mock Human Capital Management API. HCM owns employment and balance data;
+    ExampleHR consumes these endpoints as a downstream client.
+
+    **Try requests against the Next.js mock** (not the editor Swagger Preview port):
+    run `pnpm dev`, then use server `http://localhost:3000/api/hcm` below, or curl that base URL.
+
+servers:
+  - url: http://localhost:3000/api/hcm
+    description: Local mock — `pnpm dev` (use this in Swagger Preview Execute)
+  - url: /api/hcm
+    description: Same-origin when the app is already open (browser / deployed)
+
+tags:
+  - name: Balances
+  - name: TimeOffRequests
+  - name: Dev
+
+paths:
+  /balances/batch:
+    get:
+      tags: [Balances]
+      summary: Expensive batch corpus of all balance cells
+      operationId: getBalancesBatch
+      parameters:
+        - $ref: '#/components/parameters/DelayMs'
+        - name: employeeId
+          in: query
+          schema:
+            type: string
+            example: emp-alex
+          description: Optional filter to one employee
+      responses:
+        '200':
+          description: Full balance corpus
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BalanceBatchResponse'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '504':
+          $ref: '#/components/responses/GatewayTimeout'
+
+  /balances/{employeeId}/{locationId}:
+    get:
+      tags: [Balances]
+      summary: Authoritative per-cell balance read
+      operationId: getBalanceCell
+      parameters:
+        - $ref: '#/components/parameters/EmployeeId'
+        - $ref: '#/components/parameters/LocationId'
+        - $ref: '#/components/parameters/BalanceType'
+        - $ref: '#/components/parameters/DelayMs'
+      responses:
+        '200':
+          description: Single balance cell
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BalanceCell'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '504':
+          $ref: '#/components/responses/GatewayTimeout'
+
+  /time-off-requests:
+    get:
+      tags: [TimeOffRequests]
+      summary: List time-off requests
+      operationId: listTimeOffRequests
+      parameters:
+        - name: status
+          in: query
+          example: manager_pending
+          schema:
+            $ref: '#/components/schemas/RequestStatus'
+        - name: managerId
+          in: query
+          schema:
+            type: string
+            example: mgr-morgan
+        - name: employeeId
+          in: query
+          schema:
+            type: string
+            example: emp-alex
+      responses:
+        '200':
+          description: Request list
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TimeOffRequest'
+
+    post:
+      tags: [TimeOffRequests]
+      summary: Submit a new time-off request
+      operationId: createTimeOffRequest
+      parameters:
+        - $ref: '#/components/parameters/DelayMs'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTimeOffRequest'
+            example:
+              employeeId: emp-alex
+              locationId: loc-austin
+              balanceType: vacation
+              startDate: '2026-07-15'
+              endDate: '2026-07-16'
+              daysRequested: 2
+              note: Swagger test request
+      responses:
+        '201':
+          description: Request accepted by HCM
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TimeOffRequest'
+        '200':
+          description: Silent-wrong success (body may not match persisted state)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TimeOffRequest'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '504':
+          $ref: '#/components/responses/GatewayTimeout'
+
+  /time-off-requests/{requestId}:
+    patch:
+      tags: [TimeOffRequests]
+      summary: Manager approve or deny a request
+      operationId: patchTimeOffRequest
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+        - $ref: '#/components/parameters/DelayMs'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchTimeOffRequest'
+            example:
+              action: approve
+              managerId: mgr-morgan
+              balanceSnapshotDays: 12
+      responses:
+        '200':
+          description: Updated request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TimeOffRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags: [TimeOffRequests]
+      summary: Employee withdraws a pending request
+      operationId: withdrawTimeOffRequest
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      responses:
+        '204':
+          description: Withdrawn
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /dev/chaos:
+    post:
+      tags: [Dev]
+      summary: Trigger chaos behaviors (dev / Storybook only)
+      operationId: triggerChaos
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChaosTrigger'
+            example:
+              action: anniversary_bonus
+              employeeId: emp-alex
+              locationId: loc-austin
+              bonusDays: 1
+      responses:
+        '200':
+          description: Chaos applied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChaosResult'
+
+components:
+  parameters:
+    EmployeeId:
+      name: employeeId
+      in: path
+      required: true
+      schema:
+        type: string
+        example: emp-alex
+      example: emp-alex
+    LocationId:
+      name: locationId
+      in: path
+      required: true
+      schema:
+        type: string
+        example: loc-austin
+      example: loc-austin
+    BalanceType:
+      name: balanceType
+      in: query
+      example: vacation
+      schema:
+        $ref: '#/components/schemas/BalanceType'
+    RequestId:
+      name: requestId
+      in: path
+      required: true
+      schema:
+        type: string
+        example: req-1
+      example: req-1
+      description: Use id from POST /time-off-requests (e.g. req-1 after first submit)
+    DelayMs:
+      name: delay
+      in: query
+      schema:
+        type: integer
+        minimum: 0
+        maximum: 30000
+
+  responses:
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    BadRequest:
+      description: Invalid dimension combination
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    Conflict:
+      description: Insufficient balance or state conflict
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    RateLimited:
+      description: Batch endpoint rate limited
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    GatewayTimeout:
+      description: HCM did not respond in time
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+
+  schemas:
+    BalanceType:
+      type: string
+      enum: [vacation, sick]
+
+    BalanceCell:
+      type: object
+      required:
+        - employeeId
+        - locationId
+        - locationName
+        - balanceType
+        - availableDays
+        - asOf
+      properties:
+        employeeId:
+          type: string
+        locationId:
+          type: string
+        locationName:
+          type: string
+        balanceType:
+          $ref: '#/components/schemas/BalanceType'
+        availableDays:
+          type: number
+          minimum: 0
+        asOf:
+          type: string
+          format: date-time
+          description: HCM authoritative timestamp for this cell
+
+    BalanceBatchResponse:
+      type: object
+      required: [items, fetchedAt]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/BalanceCell'
+        fetchedAt:
+          type: string
+          format: date-time
+
+    RequestStatus:
+      type: string
+      enum:
+        - optimistic_pending
+        - hcm_confirming
+        - confirmed
+        - manager_pending
+        - manager_verifying
+        - approved
+        - denied
+        - reverted
+        - silently_wrong
+        - conflict_recovery
+        - withdrawn
+        - stale_confirmation
+
+    TimeOffRequest:
+      type: object
+      required:
+        - id
+        - employeeId
+        - employeeName
+        - managerId
+        - locationId
+        - locationName
+        - balanceType
+        - startDate
+        - endDate
+        - daysRequested
+        - status
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+        employeeId:
+          type: string
+        employeeName:
+          type: string
+        managerId:
+          type: string
+        locationId:
+          type: string
+        locationName:
+          type: string
+        balanceType:
+          $ref: '#/components/schemas/BalanceType'
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        daysRequested:
+          type: number
+          minimum: 0.5
+          description: Business days (Mon–Fri) in the range; weekends excluded
+        status:
+          $ref: '#/components/schemas/RequestStatus'
+        note:
+          type: string
+        hcmConfirmedAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CreateTimeOffRequest:
+      type: object
+      required:
+        - employeeId
+        - locationId
+        - balanceType
+        - startDate
+        - endDate
+        - daysRequested
+      properties:
+        employeeId:
+          type: string
+        locationId:
+          type: string
+        balanceType:
+          $ref: '#/components/schemas/BalanceType'
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        daysRequested:
+          type: number
+          minimum: 0.5
+          description: Business days (Mon–Fri) between startDate and endDate; weekends excluded
+        note:
+          type: string
+
+    PatchTimeOffRequest:
+      type: object
+      required: [action]
+      properties:
+        action:
+          type: string
+          enum: [approve, deny]
+        managerId:
+          type: string
+        balanceSnapshotDays:
+          type: number
+          description: Balance the manager saw when opening the detail panel
+
+    ApiError:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          enum:
+            - INSUFFICIENT_BALANCE
+            - INVALID_DIMENSION
+            - STATE_CONFLICT
+            - RATE_LIMITED
+            - GATEWAY_TIMEOUT
+            - NOT_FOUND
+        message:
+          type: string
+
+    ChaosTrigger:
+      type: object
+      required: [action]
+      properties:
+        action:
+          type: string
+          enum:
+            - anniversary_bonus
+            - silent_wrong_next
+            - slow_network
+            - reset
+            - year_start_refresh
+        employeeId:
+          type: string
+        locationId:
+          type: string
+        bonusDays:
+          type: number
+          default: 1
+        delayMs:
+          type: integer
+          default: 3000
+
+    ChaosResult:
+      type: object
+      required: [applied, message]
+      properties:
+        applied:
+          type: boolean
+        message:
+          type: string
+        affectedCells:
+          type: array
+          items:
+            $ref: '#/components/schemas/BalanceCell'
