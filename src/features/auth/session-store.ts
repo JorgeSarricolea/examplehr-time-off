@@ -24,7 +24,11 @@ interface SessionState {
 
 export const useSessionStore = create<SessionState>((set) => ({
   user: null,
-  setUser: (user) => set({ user }),
+  setUser: (user) =>
+    set({
+      user,
+      ...(user ? {} : { optimisticDeductions: [], selectedRequestId: null }),
+    }),
   optimisticDeductions: [],
   addOptimisticDeduction: (deduction) =>
     set((s) => ({

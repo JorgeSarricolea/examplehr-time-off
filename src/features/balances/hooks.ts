@@ -5,6 +5,7 @@ import { hcmApi } from '@/shared/lib/api';
 import { queryKeys } from '@/shared/lib/query-keys';
 import { reconcileBalances } from '@/shared/lib/reconcile';
 import { useSessionStore } from '@/features/auth/session-store';
+import { invalidatePayrollQueryCache } from '@/features/auth/query-cache';
 import type { CreateTimeOffRequest, PatchTimeOffRequest } from '@/shared/types/hcm';
 
 export function useBalancesBatch(employeeId: string) {
@@ -41,6 +42,8 @@ export function useEmployeeRequests(employeeId: string) {
   return useQuery({
     queryKey: queryKeys.requests.employee(employeeId),
     queryFn: () => hcmApi.listRequests({ employeeId }),
+    enabled: Boolean(employeeId),
+    refetchOnMount: 'always',
     refetchInterval: (query) => {
       const items = query.state.data?.items ?? [];
       const needsPoll = items.some(
@@ -55,6 +58,8 @@ export function useManagerRequests(managerId: string) {
   return useQuery({
     queryKey: queryKeys.requests.manager(managerId),
     queryFn: () => hcmApi.listRequests({ managerId }),
+    enabled: Boolean(managerId),
+    refetchOnMount: 'always',
     refetchInterval: 15_000,
   });
 }
@@ -82,13 +87,12 @@ export function useCreateRequestMutation(employeeId: string) {
     },
     onSettled: (_data, _err, body) => {
       clearDeduction(body.employeeId, body.locationId, body.balanceType);
-      queryClient.invalidateQueries({ queryKey: queryKeys.balances.batch(employeeId) });
-      queryClient.invalidateQueries({ queryKey: queryKeys.requests.employee(employeeId) });
+      void invalidatePayrollQueryCache(queryClient);
     },
   });
 }
 
-export function usePatchRequestMutation(managerId: string) {
+export function usePatchRequestMutation(_managerId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -100,19 +104,18 @@ export function usePatchRequestMutation(managerId: string) {
       body: PatchTimeOffRequest;
     }) => hcmApi.patchRequest(requestId, body),
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.requests.manager(managerId) });
+      void invalidatePayrollQueryCache(queryClient);
     },
   });
 }
 
-export function useWithdrawRequestMutation(employeeId: string) {
+export function useWithdrawRequestMutation(_employeeId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (requestId: string) => hcmApi.withdrawRequest(requestId),
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.requests.employee(employeeId) });
-      queryClient.invalidateQueries({ queryKey: queryKeys.balances.batch(employeeId) });
+      void invalidatePayrollQueryCache(queryClient);
     },
   });
 }

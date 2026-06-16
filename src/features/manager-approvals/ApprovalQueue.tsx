@@ -51,9 +51,12 @@ export function ApprovalQueue({
   const [selectedId, setSelectedId] = useState<string | null>(initialSelectedId);
   const [detailOpen, setDetailOpen] = useState(initialDetailOpen);
 
-  const isLoading = forceLoading ?? query.isLoading;
   const allRequests = overrideRequests ?? query.data?.items ?? [];
   const isHistory = filter === 'history';
+
+  const isLoading =
+    forceLoading ??
+    (query.isPending || (query.isFetching && allRequests.length === 0));
 
   const requests = isHistory
     ? allRequests.filter((r) => r.status === 'approved' || r.status === 'denied')

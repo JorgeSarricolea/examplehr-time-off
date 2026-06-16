@@ -152,7 +152,13 @@ export function EmployeeRequestsHub({
 
       <StatusLegend selected={statusFilter} onChange={setStatusFilter} />
 
-      {requests.length === 0 ? (
+      {requestsQuery.isPending ||
+      (requestsQuery.isFetching && requests.length === 0) ? (
+        <Stack spacing={1.5}>
+          <Box sx={{ height: 88, borderRadius: 1.5, bgcolor: 'action.hover' }} />
+          <Box sx={{ height: 88, borderRadius: 1.5, bgcolor: 'action.hover' }} />
+        </Stack>
+      ) : requests.length === 0 ? (
         <Card variant="outlined" sx={{ borderStyle: 'dashed', bgcolor: 'background.paper' }}>
           <CardContent>
             <Stack spacing={1.5} alignItems="center" textAlign="center" sx={{ py: 4 }}>

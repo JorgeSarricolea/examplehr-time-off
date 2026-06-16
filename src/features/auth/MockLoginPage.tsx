@@ -18,7 +18,9 @@ import {
 import { DEMO_USERS } from '@/hcm-mock/store';
 import { authApi, hcmApi } from '@/shared/lib/api';
 import { useSessionStore } from '@/features/auth/session-store';
+import { clearPayrollQueryCache } from '@/features/auth/query-cache';
 import { useSnackbar } from '@/providers/SnackbarProvider';
+import { useQueryClient } from '@tanstack/react-query';
 
 const roleLabels = {
   employee: 'Employee',
@@ -27,6 +29,7 @@ const roleLabels = {
 
 export function MockLoginPage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const setUser = useSessionStore((s) => s.setUser);
   const { notify } = useSnackbar();
   const [loading, setLoading] = useState<string | null>(null);
@@ -36,6 +39,7 @@ export function MockLoginPage() {
     setLoading(email);
     try {
       const user = await authApi.login(email);
+      clearPayrollQueryCache(queryClient);
       setUser(user);
       router.push(user.role === 'manager' ? '/manager/approvals' : '/employee/balances');
     } finally {

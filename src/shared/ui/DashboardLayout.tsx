@@ -22,6 +22,8 @@ import {
 } from '@mui/material';
 import { authApi } from '@/shared/lib/api';
 import { useSessionStore } from '@/features/auth/session-store';
+import { clearPayrollQueryCache } from '@/features/auth/query-cache';
+import { useQueryClient } from '@tanstack/react-query';
 import type { NavItem } from '@/shared/lib/navigation';
 
 const DRAWER_WIDTH = 240;
@@ -98,9 +100,11 @@ function SideNavFooter({ onNavigate }: { onNavigate?: () => void }) {
   const setUser = useSessionStore((s) => s.setUser);
   const router = useRouter();
   const theme = useTheme();
+  const queryClient = useQueryClient();
 
   const logout = async () => {
     await authApi.logout();
+    clearPayrollQueryCache(queryClient);
     setUser(null);
     router.push('/login');
     onNavigate?.();
